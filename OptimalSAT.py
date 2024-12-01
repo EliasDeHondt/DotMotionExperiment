@@ -61,12 +61,6 @@ instruction_6 = visual.ImageStim(win, image='Images/Instructions-6.png', pos=(0,
 
 # Trial
 def trial(coherence, correct_answer, askConfidence, giveFeedback, timePunishment_decision, timePunishment_confidence):
-
-    # Start muziek afspelen
-    start_music = sound.Sound('Audio/start_music.wav')
-    start_music.play()
-    core.wait(start_music.getDuration())
-
     # Set dotMotion parameters
     dotMotion.coherence = coherence
     if correct_answer == 'c':  dotMotion.dir = 180
@@ -141,6 +135,10 @@ def run_block(instruction_image, n_trials, coherence, giveFeedback, askConfidenc
     space.draw()
     win.flip()
     event.waitKeys(keyList=keys_instruction)
+
+    start_music = sound.Sound('Audio/start_music.wav')
+    start_music.play()
+    core.wait(start_music.getDuration())
 
     mean_accuracy = 0
     while mean_accuracy < min_accuracy if min_accuracy else 0:
