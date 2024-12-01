@@ -10,7 +10,7 @@ monitor_settings = {
 }
 
 # Time constants
-FIXATION_DURATION = 1
+FIXATION_DURATION = 1 
 MAX_DECISION_TIME = 3
 
 # Difficulty constants
