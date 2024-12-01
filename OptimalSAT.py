@@ -1,16 +1,17 @@
-from psychopy import visual, core, event, monitors              # type: ignore
-from psychopy import sound                                      # type: ignore
+from psychopy import visual, core, event, monitors, sound       # type: ignore
+import numpy as np                                              # type: ignore
 import random                                                   # type: ignore
 
 # Settings
-MONITOR_USER = 'Yenthe'
+MONITOR_USER = 'Elias'
 monitor_settings = {
     "Stef": {"width": 30, "distance": 40, "resolution": (1920, 1200)},
-    "Yenthe": {"width": 40, "distance": 50, "resolution": (2560, 1440)}
+    "Yenthe": {"width": 40, "distance": 50, "resolution": (2560, 1440)},
+    "Elias": {"width": 30, "distance": 40, "resolution": (1920, 1080)},
 }
 
 # Time constants
-FIXATION_DURATION = 1 
+FIXATION_DURATION = 1
 MAX_DECISION_TIME = 3
 
 # Difficulty constants
@@ -59,11 +60,59 @@ instruction_4 = visual.ImageStim(win, image='Images/Instructions-4.png', pos=(0,
 instruction_5 = visual.ImageStim(win, image='Images/Instructions-5.png', pos=(0, 0), size=(30, 17))
 instruction_6 = visual.ImageStim(win, image='Images/Instructions-6.png', pos=(0, 0), size=(30, 17))
 
+# Sound
+def play_sound(file):
+    start_music = sound.Sound('Audio/' + file)
+    start_music.play()
+    core.wait(start_music.getDuration())
+
+# Confetti streamers
+def confetti_streamers(win, duration=5, n_streamers=50, streamer_length=10):
+    confetti_positions = np.random.uniform(-20, 20, size=(n_streamers, 2))
+    confetti_colors = [np.random.choice(['red', 'blue', 'green', 'yellow', 'white', 'magenta']) for _ in range(n_streamers)]
+    confetti_speeds = np.random.uniform(0.05, 0.2, size=n_streamers)
+    confetti_directions = np.random.uniform(0, 360, size=n_streamers)
+    streamers = [
+        [
+            visual.Rect(
+                win,
+                width=0.2,
+                height=0.6,
+                fillColor=color,
+                lineColor=color,
+                pos=(pos[0], pos[1])
+            ) for _ in range(streamer_length)
+        ]
+        for pos, color in zip(confetti_positions, confetti_colors)
+    ]
+    play_sound('confetti.mp3')
+    timer = core.Clock()
+    while timer.getTime() < duration:
+        win.clearBuffer()
+        for i in range(n_streamers):
+            angle_rad = np.deg2rad(confetti_directions[i])
+            dx = confetti_speeds[i] * np.cos(angle_rad)
+            dy = confetti_speeds[i] * np.sin(angle_rad)
+            for j, rect in enumerate(streamers[i]):
+                lag_factor = j / streamer_length
+                rect.pos = (
+                    confetti_positions[i][0] + dx * lag_factor,
+                    confetti_positions[i][1] + dy * lag_factor
+                )
+                rect.ori += np.random.uniform(-5, 5)
+                rect.draw()
+            confetti_positions[i] = (
+                confetti_positions[i][0] + dx,
+                confetti_positions[i][1] + dy
+            )
+        win.flip()
+
 # Trial
 def trial(coherence, correct_answer, askConfidence, giveFeedback, timePunishment_decision, timePunishment_confidence):
+
     # Set dotMotion parameters
     dotMotion.coherence = coherence
-    if correct_answer == 'c':  dotMotion.dir = 180
+    if correct_answer == 'c': dotMotion.dir = 180
     elif correct_answer == 'n': dotMotion.dir = 0
 
     # Confidence mapping
@@ -118,9 +167,12 @@ def trial(coherence, correct_answer, askConfidence, giveFeedback, timePunishment
 
     # Time punishment
     timePunishment = 0
-    if accuracy == 0: timePunishment += timePunishment_decision
-    if askConfidence and accuracy == 0: timePunishment += timePunishment_confidence[int(response_confidence)-1]
-    if askConfidence and accuracy == 1: timePunishment += timePunishment_confidence[6-int(response_confidence)]
+    if accuracy == 0:
+        timePunishment += timePunishment_decision
+    if askConfidence and accuracy == 0:
+        timePunishment += timePunishment_confidence[int(response_confidence)-1]
+    if askConfidence and accuracy == 1:
+        timePunishment += timePunishment_confidence[6-int(response_confidence)]
 
     # Show time punishment
     if timePunishment > 0:
@@ -130,46 +182,117 @@ def trial(coherence, correct_answer, askConfidence, giveFeedback, timePunishment
     core.wait(timePunishment)
     return accuracy
 
-def run_block(instruction_image, n_trials, coherence, giveFeedback, askConfidence, timePunishment_decision, timePunishment_confidence, min_accuracy=None):
-    instruction_image.draw()
+def start_experiment():
+    ########## Block 1 ##########
+    instruction_1.draw()
     space.draw()
     win.flip()
     event.waitKeys(keyList=keys_instruction)
-
-    start_music = sound.Sound('Audio/start_music.wav')
-    start_music.play()
-    core.wait(start_music.getDuration())
-
     mean_accuracy = 0
-    while mean_accuracy < min_accuracy if min_accuracy else 0:
+    play_sound('start_music.wav')
+    while mean_accuracy < MINIMUM_ACCURACY_BLOCK1:
         mean_accuracy = 0
-        for trial_number in range(n_trials):
+        for trial_number in range(N_TRIALS_BLOCK1):
             correct_answer = random.choice(['c', 'n'])
-            trial_accuracy = trial(coherence=coherence, correct_answer=correct_answer, giveFeedback=giveFeedback, askConfidence=askConfidence, timePunishment_decision=timePunishment_decision, timePunishment_confidence=timePunishment_confidence)
+            trial_accuracy = trial(coherence=COHERENCE_EASY, correct_answer=correct_answer, giveFeedback=True, askConfidence=False, timePunishment_decision=0, timePunishment_confidence = [0, 0, 0, 0, 0, 0])
             mean_accuracy += trial_accuracy
-        mean_accuracy = mean_accuracy / n_trials
+        mean_accuracy = mean_accuracy / N_TRIALS_BLOCK1
+    ########## Block 2 ##########
+    instruction_2.draw()
+    space.draw()
+    win.flip()
+    event.waitKeys(keyList=keys_instruction)
+    mean_accuracy = 0
+    play_sound('start_music.wav')
+    while mean_accuracy < MINIMUM_ACCURACY_BLOCK2:
+        mean_accuracy = 0
+        for trial_number in range(N_TRIALS_BLOCK2):
+            correct_answer = random.choice(['c', 'n'])
+            trial_accuracy = trial(coherence=COHERENCE_DIFFICULT, correct_answer=correct_answer, giveFeedback=True, askConfidence=False, timePunishment_decision=0, timePunishment_confidence = [0, 0, 0, 0, 0, 0])
+            mean_accuracy += trial_accuracy
+        mean_accuracy = mean_accuracy / N_TRIALS_BLOCK2
+    ########## Block 3 ##########
+    instruction_3.draw()
+    space.draw()
+    win.flip()
+    event.waitKeys(keyList=keys_instruction)
+    score = 0
+    timer = core.Clock()
+    play_sound('start_music.wav')
+    while timer.getTime() < TIME_BLOCK3:
+        correct_answer = random.choice(['c', 'n'])
+        trial_accuracy = trial(coherence=COHERENCE_EASY, correct_answer=correct_answer, giveFeedback=False, askConfidence=False, timePunishment_decision=1, timePunishment_confidence = [0, 0, 0, 0, 0, 0])
+        score += trial_accuracy
+    scoreIndicator = visual.TextStim(win, text="Score: " + str(score), color='white')
+    scoreIndicator.draw()
+    win.flip()
+    core.wait(2)
+    ########## Block 4 ##########
+    instruction_4.draw()
+    space.draw()
+    win.flip()
+    event.waitKeys(keyList=keys_instruction)
+    score = 0
+    timer = core.Clock()
+    play_sound('start_music.wav')
+    while timer.getTime() < TIME_BLOCK4:
+        correct_answer = random.choice(['c', 'n'])
+        trial_accuracy = trial(coherence=COHERENCE_DIFFICULT, correct_answer=correct_answer, giveFeedback=False, askConfidence=True, timePunishment_decision=1, timePunishment_confidence = [0, 0.2, 0.4, 0.6, 0.8, 1])
+        score += trial_accuracy
+    scoreIndicator = visual.TextStim(win, text="Score: " + str(score), color='white')
+    scoreIndicator.draw()
+    win.flip()
+    core.wait(2)
+    ########## Main Task 1 ##########
+    instruction_5.draw()
+    space.draw()
+    win.flip()
+    event.waitKeys(keyList=keys_instruction)
+    score = 0
+    timer = core.Clock()
+    play_sound('start_music.wav')
+    while timer.getTime() < TIME_MAIN:
+        correct_answer = random.choice(['c', 'n'])
+        trial_accuracy = trial(coherence=COHERENCE_DIFFICULT, correct_answer=correct_answer, giveFeedback=False, askConfidence=True, timePunishment_decision=2, timePunishment_confidence = [0, 0.2, 0.4, 0.6, 0.8, 1])
+        score += trial_accuracy
+    ########## Main Task 2 ##########
+    instruction_6.draw()
+    space.draw()
+    win.flip()
+    event.waitKeys(keyList=keys_instruction)
+    score = 0
+    timer = core.Clock()
+    play_sound('start_music.wav')
+    while timer.getTime() < TIME_MAIN:
+        correct_answer = random.choice(['c', 'n'])
+        trial_accuracy = trial(coherence=COHERENCE_DIFFICULT, correct_answer=correct_answer, giveFeedback=False, askConfidence=True, timePunishment_decision=1, timePunishment_confidence = [0, 0.4, 0.8, 1.2, 1.6, 2])
+        score += trial_accuracy
+    ########## Main Task 3 ##########
+    instruction_6.draw()
+    space.draw()
+    win.flip()
+    event.waitKeys(keyList=keys_instruction)
+    score = 0
+    timer = core.Clock()
+    play_sound('start_music.wav')
+    while timer.getTime() < TIME_MAIN:
+        correct_answer = random.choice(['c', 'n'])
+        trial_accuracy = trial(coherence=COHERENCE_DIFFICULT, correct_answer=correct_answer, giveFeedback=False, askConfidence=True, timePunishment_decision=2, timePunishment_confidence = [0, 0.2, 0.4, 0.6, 0.8, 1])
+        score += trial_accuracy
+    ########## Main Task 4 ##########
+    instruction_6.draw()
+    space.draw()
+    win.flip()
+    event.waitKeys(keyList=keys_instruction)
+    score = 0
+    timer = core.Clock()
+    play_sound('start_music.wav')
+    while timer.getTime() < TIME_MAIN:
+        correct_answer = random.choice(['c', 'n'])
+        trial_accuracy = trial(coherence=COHERENCE_DIFFICULT, correct_answer=correct_answer, giveFeedback=False, askConfidence=True, timePunishment_decision=1, timePunishment_confidence = [0, 0.4, 0.8, 1.2, 1.6, 2])
+    score += trial_accuracy
 
-# Block 1
-run_block(instruction_1, N_TRIALS_BLOCK1, COHERENCE_EASY,
-        giveFeedback=True, askConfidence=False, timePunishment_decision=0, timePunishment_confidence=[0, 0, 0, 0, 0, 0], min_accuracy=MINIMUM_ACCURACY_BLOCK1)
-# Block 2
-run_block(instruction_2, N_TRIALS_BLOCK2, COHERENCE_DIFFICULT,
-        giveFeedback=True, askConfidence=False, timePunishment_decision=0, timePunishment_confidence=[0, 0, 0, 0, 0, 0], min_accuracy=MINIMUM_ACCURACY_BLOCK2)
-# Block 3
-run_block(instruction_3, N_TRIALS_BLOCK1, COHERENCE_EASY,
-        giveFeedback=False, askConfidence=False, timePunishment_decision=1, timePunishment_confidence=[0, 0, 0, 0, 0, 0])
-# Block 4
-run_block(instruction_4, N_TRIALS_BLOCK2, COHERENCE_DIFFICULT,
-        giveFeedback=False, askConfidence=True, timePunishment_decision=1, timePunishment_confidence=[0, 0.2, 0.4, 0.6, 0.8, 1])
-# Main task 1
-run_block(instruction_5, N_TRIALS_BLOCK1, COHERENCE_DIFFICULT,
-        giveFeedback=False, askConfidence=True, timePunishment_decision=2, timePunishment_confidence=[0, 0.2, 0.4, 0.6, 0.8, 1])
-# Main task 2
-run_block(instruction_6, N_TRIALS_BLOCK1, COHERENCE_DIFFICULT,
-        giveFeedback=False, askConfidence=True, timePunishment_decision=1, timePunishment_confidence=[0, 0.4, 0.8, 1.2, 1.6, 2])
-# Main task 3
-run_block(instruction_6, N_TRIALS_BLOCK1, COHERENCE_DIFFICULT,
-        giveFeedback=False, askConfidence=True, timePunishment_decision=2, timePunishment_confidence=[0, 0.2, 0.4, 0.6, 0.8, 1])
-# Main task 4
-run_block(instruction_6, N_TRIALS_BLOCK1, COHERENCE_DIFFICULT,
-        giveFeedback=False, askConfidence=True, timePunishment_decision=1, timePunishment_confidence=[0, 0.4, 0.8, 1.2, 1.6, 2])
+start_experiment()                                                              # Start the experiment
+confetti_streamers(win, duration=5, n_streamers=50, streamer_length=10)         # Show confetti streamers
+win.close()
+core.quit()
