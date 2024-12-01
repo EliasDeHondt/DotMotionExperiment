@@ -63,10 +63,8 @@ instruction_6 = visual.ImageStim(win, image='Images/Instructions-6.png', pos=(0,
 def trial(coherence, correct_answer, askConfidence, giveFeedback, timePunishment_decision, timePunishment_confidence):
 
     # Start muziek afspelen
-    start_music = sound.Sound('Audio/start_music.wav')  # Zorg ervoor dat je het pad naar je geluidsbestand correct hebt
+    start_music = sound.Sound('Audio/start_music.wav')
     start_music.play()
-
-    # Wacht tot de muziek afgelopen is
     core.wait(start_music.getDuration())
 
     # Set dotMotion parameters
