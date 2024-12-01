@@ -21,8 +21,6 @@ Please also see following documents:
 
 ## 📚Experiment Instructions
 
-## 📚Experiment Instructions
-
 - **Start**
     - What is the task?
     - Keys for decisions: `c` (correct) and `n` (incorrect).
